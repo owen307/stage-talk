@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Stage Talk
+Comment=Booth-to-stage notes on the local network
+Exec=alpaca_stage_talk
+Icon=stage-talk
+Terminal=false
+Categories=AudioVideo;Network;
+StartupWMClass=stage-talk
