@@ -78,7 +78,7 @@ class _AboutPageState extends State<AboutPage> {
           const _Block(
             label: 'ON THE LINK',
             body:
-                'Name this device, then send a short note. Every other Stage Talk on the same LAN and the same show hears it. Stand by, Mic 2, and Hold send immediately. Stage type is the large read. Chime plays a tone for someone else’s note. Awake keeps the display on.',
+                'Name this device, then send a short message, up to 160 characters. Every other Stage Talk on the same LAN and the same show hears it. Stand by, Mic 2, and Hold send immediately. The thread keeps the notes, and Stage type enlarges the last line. When another app on this show fires a cue, that fire shows up in the thread. This app does not fire lighting and does not send audio. Chime plays a tone for someone else’s line. Awake keeps the display on.',
           ),
           const SizedBox(height: 14),
           DecoratedBox(
@@ -126,9 +126,9 @@ class _AboutPageState extends State<AboutPage> {
           const _Block(
             label: 'PROTOCOL',
             body:
-                'Alpaca Link type talk.message. JSON multicast 239.255.42.77:44771, TTL 1.\n'
+                'Alpaca Link. Notes are type talk.message from stage-talk. JSON multicast 239.255.42.77:44771, TTL 1.\n'
                 'version, source.app, source.instance, source.name, type, name, payload, timestamp, id, show.\n'
-                'source.app is stage-talk.',
+                'A cue.fire from another app on the same show is appended as a line, for example the cue name and that it went. It is not sent onward.',
           ),
         ],
       ),

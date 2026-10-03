@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
-/// One booth-to-stage note on Alpaca Link.
+/// One line on the Stage Talk thread, carried on Alpaca Link.
 ///
-/// JSON multicast `239.255.42.77:44771`, TTL 1. Field order is fixed:
+/// JSON multicast `239.255.42.77:44771`, TTL 1. A note this app sends uses
+/// field order:
 ///
 /// ```json
 /// {
@@ -19,7 +20,13 @@ import 'dart:typed_data';
 /// }
 /// ```
 ///
-/// `source.name` and `name` are both the operator. `payload.text` is the note.
+/// For `talk.message`, `source.name` and `name` are both the operator.
+/// `payload.text` is the note. `source.app` must be `stage-talk`.
+///
+/// A `cue.fire` from another app is the same envelope with the cue name in
+/// `name`, the speaker in `source.name`, and `payload` a JSON object. It
+/// becomes a thread line such as `Blackout went`. This app does not send
+/// `cue.fire`, so receiving one cannot fire lighting.
 class TalkEnvelope {
   const TalkEnvelope({
     required this.name,
@@ -28,11 +35,13 @@ class TalkEnvelope {
     required this.timestamp,
     required this.instance,
     required this.show,
+    this.cue = false,
   });
 
   static const int version = 1;
   static const String appId = 'stage-talk';
   static const String messageType = 'talk.message';
+  static const String cueType = 'cue.fire';
   static const String defaultShow = 'Main';
   static const int maxText = 160;
   static const int maxName = 24;
@@ -46,6 +55,10 @@ class TalkEnvelope {
   final int timestamp;
   final String instance;
   final String show;
+
+  /// True when this line was a `cue.fire` from another app.
+  /// Sending never sets this. A cue line is display only.
+  final bool cue;
 
   DateTime get at => DateTime.fromMillisecondsSinceEpoch(timestamp);
 
@@ -100,19 +113,20 @@ class TalkEnvelope {
 
   Uint8List encode() => Uint8List.fromList(utf8.encode(jsonEncode(toJson())));
 
-  /// Returns null when [bytes] is not a `talk.message` from `stage-talk`.
+  /// A `talk.message` from `stage-talk`, or a `cue.fire` from any app.
+  /// Other types, including the older `{v, from}` envelope, return null.
   static TalkEnvelope? tryParse(List<int> bytes) {
     if (bytes.isEmpty || bytes.length > maxDatagram) return null;
-    Object? decoded;
-    try {
-      decoded = jsonDecode(utf8.decode(bytes));
-    } catch (_) {
-      return null;
-    }
-    if (decoded is! Map) return null;
+    final decoded = _decodeMap(bytes);
+    if (decoded == null) return null;
     if (decoded['version'] != version) return null;
-    if (decoded['type'] != messageType) return null;
+    final type = decoded['type'];
+    if (type == messageType) return _parseTalk(decoded, bytes);
+    if (type == cueType) return _parseCue(decoded, bytes);
+    return null;
+  }
 
+  static TalkEnvelope? _parseTalk(Map<dynamic, dynamic> decoded, List<int> bytes) {
     final source = decoded['source'];
     if (source is! Map) return null;
     if (source['app'] != appId) return null;
@@ -136,35 +150,104 @@ class TalkEnvelope {
     final text = rawText.trim();
     if (text.isEmpty || text.length > maxText) return null;
 
-    final rawId = decoded['id'];
-    final id = rawId is String &&
-            rawId.isNotEmpty &&
-            rawId.length <= 64 &&
-            _safeId.hasMatch(rawId)
-        ? rawId
-        : fnv1aHex(bytes);
-
-    final rawTs = decoded['timestamp'];
-    final timestamp = rawTs is int
-        ? rawTs
-        : rawTs is num
-            ? rawTs.toInt()
-            : DateTime.now().millisecondsSinceEpoch;
-
-    final rawShow = decoded['show'];
-    final show = rawShow is String && rawShow.trim().isNotEmpty
-        ? rawShow.trim()
-        : defaultShow;
-    if (show.length > maxShow) return null;
+    final show = _showOf(decoded['show']);
+    if (show == null) return null;
 
     return TalkEnvelope(
       name: who,
       text: text,
-      id: id,
-      timestamp: timestamp,
+      id: _idOf(decoded['id'], bytes),
+      timestamp: _timestampOf(decoded['timestamp']),
       instance: instance.trim(),
       show: show,
     );
+  }
+
+  /// Display-only. The cue name is `name`. `source.name` is who fired it.
+  /// `payload` is ignored except that it must be an object, which is what
+  /// LS Mobile sends (`{}`). Nothing here is transmitted.
+  static TalkEnvelope? _parseCue(Map<dynamic, dynamic> decoded, List<int> bytes) {
+    final source = decoded['source'];
+    if (source is! Map) return null;
+    final app = source['app'];
+    final instance = source['instance'];
+    final sourceName = source['name'];
+    if (app is! String || app.trim().isEmpty) return null;
+    if (instance is! String || instance.trim().isEmpty) return null;
+    if (sourceName is! String) return null;
+
+    final rawCue = decoded['name'];
+    if (rawCue is! String) return null;
+    var cueName = rawCue.trim();
+    if (cueName.isEmpty) return null;
+    if (cueName.length > maxText) {
+      cueName = cueName.substring(0, maxText);
+    }
+
+    final payload = decoded['payload'];
+    if (payload is! Map) return null;
+
+    var who = sourceName.trim();
+    if (who.isEmpty) who = app.trim();
+    if (who.length > 32) who = who.substring(0, 32);
+
+    final show = _showOf(decoded['show']);
+    if (show == null) return null;
+
+    return TalkEnvelope(
+      name: who,
+      text: '$cueName went',
+      id: _idOf(decoded['id'], bytes),
+      timestamp: _timestampOf(decoded['timestamp']),
+      instance: instance.trim(),
+      show: show,
+      cue: true,
+    );
+  }
+
+  static Map<dynamic, dynamic>? _decodeMap(List<int> bytes) {
+    Object? decoded;
+    try {
+      decoded = jsonDecode(utf8.decode(bytes));
+    } catch (_) {
+      return null;
+    }
+    if (decoded is! Map) return null;
+    return decoded;
+  }
+
+  static String? _showOf(Object? rawShow) {
+    final show = rawShow is String && rawShow.trim().isNotEmpty
+        ? rawShow.trim()
+        : defaultShow;
+    if (show.length > maxShow) return null;
+    return show;
+  }
+
+  static String _idOf(Object? rawId, List<int> bytes) {
+    if (rawId is String &&
+        rawId.isNotEmpty &&
+        rawId.length <= 64 &&
+        _safeId.hasMatch(rawId)) {
+      return rawId;
+    }
+    return fnv1aHex(bytes);
+  }
+
+  /// Unix milliseconds, a numeric string, or an ISO-8601 instant.
+  /// Peers send either the integer (LS Mobile) or an ISO string (Stage Presets).
+  static int _timestampOf(Object? rawTs) {
+    if (rawTs is int) return rawTs;
+    if (rawTs is num) return rawTs.toInt();
+    if (rawTs is String) {
+      final trimmed = rawTs.trim();
+      final asInt = int.tryParse(trimmed);
+      if (asInt != null) return asInt;
+      try {
+        return DateTime.parse(trimmed).millisecondsSinceEpoch;
+      } catch (_) {}
+    }
+    return DateTime.now().millisecondsSinceEpoch;
   }
 }
 

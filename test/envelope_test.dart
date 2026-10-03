@@ -87,4 +87,76 @@ void main() {
     (blank['payload'] as Map)['text'] = '   ';
     expect(parse(blank), isNull);
   });
+
+  test('cue.fire from another app becomes a thread line and is not a note to send', () {
+    final raw = utf8.encode(jsonEncode({
+      'version': 1,
+      'source': {'app': 'ls-mobile', 'instance': 'phone-1', 'name': 'LS Mobile'},
+      'type': 'cue.fire',
+      'name': 'Blackout',
+      'payload': {},
+      'timestamp': 1710000000000,
+      'id': 'msg-1',
+      'show': 'Main',
+    }));
+    final parsed = TalkEnvelope.tryParse(raw);
+    expect(parsed, isNotNull);
+    expect(parsed!.cue, isTrue);
+    expect(parsed.text, 'Blackout went');
+    expect(parsed.name, 'LS Mobile');
+    expect(parsed.instance, 'phone-1');
+    expect(parsed.id, 'msg-1');
+    expect(parsed.show, 'Main');
+    expect(parsed.timestamp, 1710000000000);
+    expect(parsed.toJson()['type'], 'talk.message');
+  });
+
+  test('cue.fire accepts an ISO timestamp, an empty show, and a trimmed name', () {
+    final parsed = TalkEnvelope.tryParse(utf8.encode(
+      '{"version":1,"source":{"app":"stage-presets","instance":"node-1","name":"Side phone"},"type":"cue.fire","name":" Opening ","payload":{},"timestamp":"2026-10-02T22:04:00.000Z","id":"msg-2","show":""}',
+    ));
+    expect(parsed, isNotNull);
+    expect(parsed!.text, 'Opening went');
+    expect(parsed.name, 'Side phone');
+    expect(parsed.show, 'Main');
+    expect(
+      parsed.timestamp,
+      DateTime.parse('2026-10-02T22:04:00.000Z').millisecondsSinceEpoch,
+    );
+  });
+
+  test('cue.fire on another show keeps that show, and junk cues are dropped', () {
+    TalkEnvelope? parse(Object body) {
+      return TalkEnvelope.tryParse(utf8.encode(jsonEncode(body)));
+    }
+
+    Map<String, Object?> fire({
+      String name = 'Wash',
+      String show = 'Tour',
+      Object payload = const {},
+      String app = 'ls-mobile',
+    }) {
+      return {
+        'version': 1,
+        'source': {'app': app, 'instance': 'phone-1', 'name': 'LS Mobile'},
+        'type': 'cue.fire',
+        'name': name,
+        'payload': payload,
+        'timestamp': 1,
+        'id': 'msg-3',
+        'show': show,
+      };
+    }
+
+    expect(parse(fire())!.show, 'Tour');
+    expect(parse(fire(name: '   ')), isNull);
+    expect(parse(fire(payload: [])), isNull);
+    expect(parse(fire(app: '')), isNull);
+    expect(
+      TalkEnvelope.tryParse(utf8.encode(
+        '{"v":1,"from":"booth","type":"cue.fire","name":"Wash","payload":{}}',
+      )),
+      isNull,
+    );
+  });
 }

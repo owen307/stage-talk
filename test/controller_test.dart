@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:alpaca_stage_talk/src/alpaca_link.dart';
 import 'package:alpaca_stage_talk/src/device_effects.dart';
@@ -77,6 +78,57 @@ void main() {
     ));
     await Future<void>.delayed(Duration.zero);
     expect(controller.notes, isEmpty);
+  });
+
+  test('a cue.fire is a thread line and is not transmitted', () async {
+    controller.setChime(true);
+    final before = transport.sent.length;
+    final fire = TalkEnvelope.tryParse(utf8.encode(jsonEncode({
+      'version': 1,
+      'source': {'app': 'ls-mobile', 'instance': 'phone-1', 'name': 'LS Mobile'},
+      'type': 'cue.fire',
+      'name': 'Blackout',
+      'payload': {},
+      'timestamp': 1710000000000,
+      'id': 'msg-1',
+      'show': 'Main',
+    })));
+    transport.emit(fire!);
+    transport.emit(fire);
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.notes.map((note) => note.text), ['Blackout went']);
+    expect(controller.notes.single.cue, isTrue);
+    expect(controller.notes.single.mine, isFalse);
+    expect(controller.notes.single.name, 'LS Mobile');
+    expect(controller.heard, {'LS Mobile'});
+    expect(transport.sent, hasLength(before));
+    expect(effects.chimes, 1);
+  });
+
+  test('a cue.fire for another show stays off this thread', () async {
+    final fire = TalkEnvelope.tryParse(utf8.encode(jsonEncode({
+      'version': 1,
+      'source': {'app': 'ls-mobile', 'instance': 'phone-1', 'name': 'LS Mobile'},
+      'type': 'cue.fire',
+      'name': 'Blackout',
+      'payload': {},
+      'timestamp': 1,
+      'id': 'msg-9',
+      'show': 'Tour',
+    })));
+    transport.emit(fire!);
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.notes, isEmpty);
+    expect(transport.sent, isEmpty);
+  });
+
+  test('a typed message is a normal talk.message in the thread', () {
+    expect(controller.sendText('House to half'), isTrue);
+    expect(controller.notes.single.text, 'House to half');
+    expect(controller.notes.single.cue, isFalse);
+    expect(transport.sent.single.toJson()['type'], 'talk.message');
+    expect(transport.sent.single.toJson()['payload'], {'text': 'House to half'});
+    expect(controller.sendText('x' * 161), isFalse);
   });
 }
 

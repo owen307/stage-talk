@@ -16,6 +16,7 @@ class TalkNote {
     required this.at,
     required this.mine,
     required this.sent,
+    this.cue = false,
   });
 
   final String id;
@@ -24,6 +25,9 @@ class TalkNote {
   final DateTime at;
   final bool mine;
   final bool sent;
+
+  /// A cue fire from another app, shown in the same thread as notes.
+  final bool cue;
 }
 
 enum NoteTone { ready, hold, plain }
@@ -237,6 +241,7 @@ class TalkController extends ChangeNotifier {
       at: envelope.at,
       mine: false,
       sent: true,
+      cue: envelope.cue,
     ));
     heard.add(envelope.name);
     _trim();
@@ -289,6 +294,7 @@ class TalkController extends ChangeNotifier {
           at: DateTime.fromMillisecondsSinceEpoch(at),
           mine: item['mine'] == true,
           sent: item['sent'] != false,
+          cue: item['cue'] == true,
         ));
         _seen.add(id);
         if (item['mine'] == true) {
@@ -313,6 +319,7 @@ class TalkController extends ChangeNotifier {
               'at': note.at.millisecondsSinceEpoch,
               'mine': note.mine,
               'sent': note.sent,
+              'cue': note.cue,
             })
         .toList();
     unawaited(prefs.setString('notes', jsonEncode(payload)));

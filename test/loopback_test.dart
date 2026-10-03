@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:alpaca_stage_talk/src/alpaca_link.dart';
 import 'package:alpaca_stage_talk/src/envelope.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -45,6 +48,44 @@ void main() {
     await _waitFor(
       () => atBooth.any((e) => e.id == hold.id && e.name == 'Stage'),
     );
+  });
+
+  test('a cue.fire datagram is a thread line and is not sent onward', () async {
+    final stage = AlpacaLink();
+    final sender = await RawDatagramSocket.bind(
+      InternetAddress.anyIPv4,
+      0,
+      reuseAddress: true,
+    );
+    addTearDown(() async {
+      sender.close();
+      await stage.close();
+    });
+
+    final status = await stage.start();
+    expect(status.ok, isTrue, reason: status.error);
+    final heard = <TalkEnvelope>[];
+    final sub = stage.incoming.listen(heard.add);
+    addTearDown(sub.cancel);
+
+    final bytes = utf8.encode(jsonEncode({
+      'version': 1,
+      'source': {'app': 'ls-mobile', 'instance': 'phone-1', 'name': 'LS Mobile'},
+      'type': 'cue.fire',
+      'name': 'Blackout',
+      'payload': {},
+      'timestamp': 1710000000000,
+      'id': 'msg-1',
+      'show': 'Main',
+    }));
+    sender.send(bytes, InternetAddress(AlpacaLink.multicastGroup), AlpacaLink.port);
+    await _waitFor(() => heard.any((e) => e.text == 'Blackout went' && e.cue));
+
+    final line = heard.firstWhere((e) => e.id == 'msg-1');
+    final cueCount = heard.where((e) => e.cue).length;
+    expect(stage.send(line), 0);
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    expect(heard.where((e) => e.cue), hasLength(cueCount));
   });
 }
 

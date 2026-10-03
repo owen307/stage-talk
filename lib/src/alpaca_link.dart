@@ -17,11 +17,12 @@ class LinkStatus {
   final bool multicast;
 }
 
-/// Sends and receives Alpaca Link `talk.message` datagrams on the LAN.
+/// Sends `talk.message` notes and receives those plus `cue.fire` on the LAN.
 ///
 /// JSON goes only to multicast [multicastGroup]:[port] with TTL [ttl].
 /// Two sockets may bind [port] on one machine (`SO_REUSEPORT`). Multicast
 /// loopback stays on, so a second window on this host hears the note.
+/// A received `cue.fire` is a thread line only. It is never sent back.
 abstract class TalkTransport {
   Future<LinkStatus> start();
   int send(TalkEnvelope envelope);
@@ -92,6 +93,9 @@ class AlpacaLink implements TalkTransport {
 
   @override
   int send(TalkEnvelope envelope) {
+    // A cue line is display only. Sending it would put cue.fire, or a copy
+    // of that line, back on the LAN. This app does not fire lighting.
+    if (envelope.cue) return 0;
     final socket = _socket;
     if (socket == null) return 0;
     try {
