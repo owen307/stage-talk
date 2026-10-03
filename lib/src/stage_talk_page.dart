@@ -367,7 +367,7 @@ class _Thread extends StatelessWidget {
               child: Row(
                 children: [
                   const Text(
-                    'LOG',
+                    'TALK',
                     style: TextStyle(
                       color: Dsn.textFaint,
                       fontSize: 10,
@@ -463,7 +463,7 @@ class _EmptyLog extends StatelessWidget {
           ),
           SizedBox(height: 8),
           Text(
-            'Stand by, Mic 2, and Hold reach every Stage Talk on this network. Typed notes do too.',
+            'Stand by, Mic 2, and Hold are still here. Type any short message. Cue fires from other apps on this show land in the thread too.',
             textAlign: TextAlign.center,
             style: TextStyle(color: Dsn.textDim, fontSize: 14, height: 1.35),
           ),
@@ -539,95 +539,128 @@ class _NoteRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tone = toneFor(note.text);
-    final color = toneColor(tone);
+    final color = note.cue ? Dsn.copper : toneColor(tone);
+    final align = note.cue
+        ? Alignment.center
+        : note.mine
+            ? Alignment.centerRight
+            : Alignment.centerLeft;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Dsn.panelRaised,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Dsn.hairline),
-        ),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                width: 3,
-                decoration: BoxDecoration(
-                  color: note.mine ? Dsn.textFaint : color,
-                  borderRadius: const BorderRadius.horizontal(
-                    left: Radius.circular(8),
-                  ),
-                ),
+      child: Align(
+        alignment: align,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: note.mine ? Dsn.panelHigh : Dsn.panelRaised,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: note.cue
+                    ? Dsn.copper.withValues(alpha: 0.55)
+                    : Dsn.hairline,
               ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+            ),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    width: 3,
+                    decoration: BoxDecoration(
+                      color: note.mine ? Dsn.textFaint : color,
+                      borderRadius: const BorderRadius.horizontal(
+                        left: Radius.circular(12),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            cue.toString().padLeft(2, '0'),
-                            style: const TextStyle(
-                              color: Dsn.textFaint,
-                              fontSize: 12,
-                              fontFamily: 'monospace',
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            formatClock(note.at),
-                            style: const TextStyle(
-                              color: Dsn.textFaint,
-                              fontSize: 12,
-                              fontFamily: 'monospace',
-                            ),
-                          ),
-                          const Spacer(),
-                          Text(
-                            note.name.toUpperCase(),
-                            style: TextStyle(
-                              color: note.mine ? Dsn.textDim : color,
-                              fontSize: 12,
-                              fontFamily: 'monospace',
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                          if (!note.sent) ...[
-                            const SizedBox(width: 8),
-                            const Text(
-                              'NOT SENT',
-                              style: TextStyle(
-                                color: Dsn.copper,
-                                fontSize: 11,
-                                fontFamily: 'monospace',
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.8,
+                          Row(
+                            children: [
+                              Text(
+                                cue.toString().padLeft(2, '0'),
+                                style: const TextStyle(
+                                  color: Dsn.textFaint,
+                                  fontSize: 12,
+                                  fontFamily: 'monospace',
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
+                              const SizedBox(width: 10),
+                              Text(
+                                formatClock(note.at),
+                                style: const TextStyle(
+                                  color: Dsn.textFaint,
+                                  fontSize: 12,
+                                  fontFamily: 'monospace',
+                                ),
+                              ),
+                              const Spacer(),
+                              if (note.cue) ...[
+                                Text(
+                                  'CUE',
+                                  key: ValueKey('cue-mark-${note.id}'),
+                                  style: const TextStyle(
+                                    color: Dsn.copper,
+                                    fontSize: 11,
+                                    fontFamily: 'monospace',
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 1.1,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              Flexible(
+                                child: Text(
+                                  note.name.toUpperCase(),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: note.mine ? Dsn.textDim : color,
+                                    fontSize: 12,
+                                    fontFamily: 'monospace',
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                              ),
+                              if (!note.sent) ...[
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'NOT SENT',
+                                  style: TextStyle(
+                                    color: Dsn.copper,
+                                    fontSize: 11,
+                                    fontFamily: 'monospace',
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            note.text,
+                            style: TextStyle(
+                              color: Dsn.text,
+                              fontSize: large ? 32 : 22,
+                              height: 1.15,
+                              fontWeight: FontWeight.w600,
                             ),
-                          ],
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        note.text,
-                        style: TextStyle(
-                          color: Dsn.text,
-                          fontSize: large ? 32 : 22,
-                          height: 1.15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -649,7 +682,9 @@ class _StageGlass extends StatelessWidget {
       liveRegion: true,
       label: note == null
           ? 'Waiting for a note'
-          : '${note.name} says ${note.text}',
+          : note.cue
+              ? '${note.name}, ${note.text}'
+              : '${note.name} says ${note.text}',
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: Dsn.panel,
@@ -708,7 +743,7 @@ class _StageGlass extends StatelessWidget {
                 ),
               ),
               const Text(
-                'Last note on this device. Readable from the deck.',
+                'Last line. The thread keeps every note.',
                 style: TextStyle(color: Dsn.textFaint, fontSize: 12),
               ),
             ],
@@ -870,7 +905,7 @@ class _Dock extends StatelessWidget {
                           fontSize: 20,
                           fontWeight: FontWeight.w500,
                         ),
-                        decoration: _fieldDecoration('Short note'),
+                        decoration: _fieldDecoration('Message'),
                         onSubmitted: (_) => onSendField(),
                       ),
                     ),

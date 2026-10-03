@@ -4,7 +4,7 @@
 
 Private booth-to-stage notes on the local network. No cloud account.
 
-A booth and a stage each run Stage Talk. Short text — and the presets **Stand by**, **Mic 2**, and **Hold** — shows up on every other copy on the same LAN. Stage type is the large read. Chime is optional. Awake keeps the display on.
+A booth and a stage each run Stage Talk. The screen is a thread of notes. Type any short message, or send the presets **Stand by**, **Mic 2**, and **Hold**. Every other copy on the same LAN and the same show sees the thread. When LS Mobile, or another app, fires a cue on that show, the fire is a line in the same thread. Stage Talk does not fire lighting and does not send audio. Stage type enlarges the last line. Chime is optional. Awake keeps the display on.
 
 ## Run on the desktop
 
@@ -74,11 +74,14 @@ Stage Talk speaks Alpaca Link. Each note is one JSON datagram, UTF-8, multicast 
 | `id` | Unique note id |
 | `show` | Show name. This app defaults to `Main` and ignores other shows |
 
-Other `type` values and other `source.app` values are ignored. The older `{v, from}` envelope is not accepted.
+Outgoing notes are only `talk.message` from `stage-talk`. The older `{v, from}` envelope is not accepted.
+
+A `cue.fire` on the same group and port is also read, from any `source.app`, including `ls-mobile`. The cue name is the envelope `name`. `source.name` is who fired it. `payload` is a JSON object (LS Mobile sends `{}`). `timestamp` may be Unix milliseconds or an ISO-8601 string. An empty `show` is `Main`. The thread line is the cue name plus “went”, for example `Blackout went`. That datagram is not answered, not turned into lighting, and not turned into audio. Any other `type` is ignored.
 
 ## Screen
 
-- **Dense** is the booth log. **Stage** enlarges the log and, on a phone, pins the last note in large type. A wide window always shows that stage glass.
+- The thread is the conversation. **Dense** is the booth size. **Stage** enlarges each line and, on a phone, pins the last line in large type. A wide window always shows that stage glass. The thread still holds every note.
+- A cue fire from another app is a line in that thread, marked CUE.
 - **Chime** plays a short tone for a note that came from someone else.
 - **Awake** holds the backlight.
 - **Clear** is local. Tap again within two seconds to confirm. It does not tell the other end to forget.
