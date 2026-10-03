@@ -19,11 +19,15 @@ Windows and macOS projects are in the tree (`flutter run -d windows` / `flutter 
 
 ## Android
 
-Public arm64 debug APK (v0.1.0):
+Public arm64 debug APK (v0.2.0):
 
-https://github.com/owen307/stage-talk/releases/download/v0.1.0/stage-talk-arm64-debug.apk
+https://github.com/owen307/stage-talk/releases/download/v0.2.0/stage-talk-arm64-debug.apk
 
-SHA-256 `8da3298fa6ec98295ddd05d801d69c064511a7491e62dd81e44d8dce7831120e`
+Release: https://github.com/owen307/stage-talk/releases/tag/v0.2.0
+
+SHA-256 `2d201625eeef55bc630548c439736685fe204502fcb3de6f691930bbf154e520`
+
+versionName 0.2.0, versionCode 2. v0.1.0 remains at https://github.com/owen307/stage-talk/releases/tag/v0.1.0.
 
 Build it again locally:
 
